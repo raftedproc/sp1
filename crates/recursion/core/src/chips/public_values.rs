@@ -82,6 +82,7 @@ impl<F: PrimeField32> MachineAir<F> for PublicValuesChip {
         if commit_pv_hash_instrs.len() != 1 {
             tracing::warn!("Expected exactly one CommitPVHash instruction.");
         }
+        println!("commit_pv_hash_instrs: {:?}", commit_pv_hash_instrs);
 
         // We only take 1 commit pv hash instruction, since our air only checks for one public
         // values hash.

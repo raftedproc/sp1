@@ -1232,33 +1232,9 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             >,
     {
         println!(
-            "wrap_bn254_ initial proof length: {:?}",
-            serde_json::to_string(&shard_proof).unwrap().len()
+            "wrap_bn254_ public values: {:?}",
+            serde_json::to_string(&shard_proof.public_values).unwrap()
         );
-
-        // let shape = ProofShape { chip_information: vec![("BaseAlu".to_string(), 0)] };
-        // let shape = ProofShape {
-        //     chip_information: vec![
-        //         ("Byte".to_string(), 16),
-        //         ("MemoryProgram".to_string(), 14),
-        //         ("Program".to_string(), 14),
-        //         ("AddSub".to_string(), 4),
-        //         ("CPU".to_string(), 4),
-        //         ("MemoryLocal".to_string(), 4),
-        //     ],
-        // };
-
-        // let machine = RiscvAir::<BabyBear>::machine(BabyBearPoseidon2::default());
-        // let (vk, dummy_proof) = dummy_vk_and_shard_proof(&machine, &shape);
-
-        // let input =
-        //     SP1CompressWitnessValues { vks_and_proofs: vec![(vk, dummy_proof)], is_complete: true };
-
-        // let input_with_vk = self.make_merkle_proofs(input);
-        // let P3Proof { commitments, opened_values, opening_proof, degree_bits } = p3_proof;
-
-        // ShardProof { commitment, opened_values, opening_proof, chip_ordering, public_values };
-        // let shard_proof = p3_proof_to_shardproof::<BabyBearPoseidon2>(p3_proof);
 
         let chip_proof_log_degree = shard_proof.opened_values.chips[0].log_degree;
         println!("wrap_bn254_ program chip_proof_log_degree : {}", chip_proof_log_degree);
@@ -1272,7 +1248,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         // let program = self.p3_stark_wrap_program();
         let program = self.p3_stark_wrap_program_(air, &proof_shape);
         // let program = self.wrap_program();
-        println!("wrap_bn254_ program length : {:?}", program.instructions.len());
+        // println!("wrap_bn254_ program : {:?}", program.instructions);
 
         // Run the compress program.
         let mut runtime = RecursionRuntime::<Val<InnerSC>, Challenge<InnerSC>, _>::new(
@@ -1306,9 +1282,13 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             .prove(&wrap_pk, vec![runtime.record], &mut wrap_challenger, opts.recursion_opts)
             .unwrap();
 
+        // println!(
+        //     "wrap_bn254 wrap proof length: {:?}",
+        //     serde_json::to_string(&wrap_proof).unwrap().len()
+        // );
         println!(
-            "wrap_bn254 wrap proof length: {:?}",
-            serde_json::to_string(&wrap_proof).unwrap().len()
+            "wrap_bn254_ !!!!!!! wrap_proof.public_values {:?}",
+            serde_json::to_string(&wrap_proof.shard_proofs[0].public_values).unwrap()
         );
 
         let elapsed = time.elapsed();
@@ -1365,11 +1345,11 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             is_complete: true,
         };
 
-        use std::fs::File;
-        use std::io::Write;
-        let mut file = File::create("/tmp/prove-wit.txt").expect("Could not create file!");
-        file.write_all(serde_json::to_string(&proof.proof).unwrap().as_bytes())
-            .expect("Cannot write to the file!");
+        // use std::fs::File;
+        // use std::io::Write;
+        // let mut file = File::create("/tmp/prove-wit.txt").expect("Could not create file!");
+        // file.write_all(serde_json::to_string(&proof.proof).unwrap().as_bytes())
+        //     .expect("Cannot write to the file!");
 
         // println!("wrap_groth16_bn254: {:?}", serde_json::to_string(&proof.proof).unwrap());
         let vkey_hash = sp1_vkey_digest_bn254(&proof);
@@ -1380,12 +1360,6 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
 
         witness.write_committed_values_digest(committed_values_digest);
         witness.write_vkey_hash(vkey_hash);
-
-        // use std::fs::File;
-        // use std::io::Write;
-        // let mut file = File::create("/tmp/witness1.json").expect("Could not create file!");
-        // file.write_all(serde_json::to_string(&witness.clone()).unwrap().as_bytes())
-        //     .expect("Cannot write to the file!");
 
         let prover = Groth16Bn254Prover::new();
         let proof = prover.prove(witness, build_dir.to_path_buf());
