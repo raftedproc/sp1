@@ -38,10 +38,6 @@ use crate::{
     TwoAdicPcsRoundVariable, VerifyingKeyVariable,
 };
 
-use crate::witness::{WitnessWriter, Witnessable};
-use sp1_stark::Com;
-use sp1_stark::OpeningProof;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound(serialize = "ShardProof<SC>: Serialize, Dom<SC>: Serialize"))]
 #[serde(bound(deserialize = "ShardProof<SC>: Deserialize<'de>, Dom<SC>: DeserializeOwned"))]
@@ -55,7 +51,6 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
         shape: &ProofShape,
     ) -> Self {
         println!("dummy_proof_witness_values");
-        // let (_, shard_proof) = dummy_vk_and_shard_proof(machine, shape);
 
         // WIP
         let chip = &machine.chips()[0];
@@ -68,7 +63,10 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
         );
         let local_main_batch_shape = vec![PolynomialShape { width: chip.width(), log_degree }];
         // TODO hardcoded quotinent shape. Need to fix
-        let quotient_batch_shape = vec![PolynomialShape { width: 4, log_degree }, PolynomialShape { width: 4, log_degree }];
+        let quotient_batch_shape = vec![
+            PolynomialShape { width: 4, log_degree },
+            PolynomialShape { width: 4, log_degree },
+        ];
         let batch_shapes = vec![
             PolynomialBatchShape { shapes: local_main_batch_shape },
             PolynomialBatchShape { shapes: quotient_batch_shape },
@@ -89,6 +87,8 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
             .map(|(i, (name, _))| (name.to_owned(), i))
             .collect::<HashMap<_, _>>();
 
+        let public_values = (0..PROOF_MAX_NUM_PVS).map(|_| BabyBear::zero()).collect::<Vec<_>>();
+
         let shard_proof = ShardProof {
             commitment: ShardCommitment {
                 global_main_commit: [BabyBear::zero(); sp1_stark::DIGEST_SIZE].into(),
@@ -97,10 +97,9 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
                 quotient_commit: [BabyBear::zero(); sp1_stark::DIGEST_SIZE].into(),
             },
             opened_values,
-            // opened_values: ShardOpenedValues { chips: vec![] },
             opening_proof,
             chip_ordering,
-            public_values: vec![],
+            public_values,
         };
         Self { shard_proof }
     }
@@ -642,6 +641,8 @@ where
             chip_ordering,
             public_values,
         } = proof;
+
+        println!("verify_shard_ rec public_values.len() {}", public_values.len());
 
         // Assert that the byte multiplicities don't overflow.
         // let mut max_byte_lookup_mult = 0u64;

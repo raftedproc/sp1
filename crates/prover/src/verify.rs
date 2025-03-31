@@ -663,7 +663,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         Ok(())
     }
 
-    pub fn verify_groth16_bn254_(&self, proof: &Groth16Bn254Proof, build_dir: &Path) -> Result<()> {
+    pub fn verify_groth16_bn254_(&self, proof: &Groth16Bn254Proof, public_values: &SP1PublicValues, build_dir: &Path) -> Result<()> {
         let prover = Groth16Bn254Prover::new();
 
         let vkey_hash = BigUint::from_str(&proof.public_inputs[0])?;
@@ -672,7 +672,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         // Verify the proof with the corresponding public inputs.
         prover.verify(proof, &vkey_hash, &committed_values_digest, build_dir);
 
-        // verify_groth16_bn254_public_inputs(vk, public_values, &proof.public_inputs)?;
+        verify_groth16_bn254_public_inputs_(public_values, &proof.public_inputs)?;
 
         Ok(())
     }
@@ -715,6 +715,26 @@ pub fn verify_groth16_bn254_public_inputs(
     if vk_hash != expected_vk_hash {
         return Err(Groth16VerificationError::InvalidVerificationKey.into());
     }
+
+    let public_values_hash = public_values.hash_bn254();
+    if public_values_hash != expected_public_values_hash {
+        return Err(Groth16VerificationError::InvalidPublicValues.into());
+    }
+
+    Ok(())
+}
+
+pub fn verify_groth16_bn254_public_inputs_(
+    public_values: &SP1PublicValues,
+    groth16_bn254_public_inputs: &[String],
+) -> Result<()> {
+    // let expected_vk_hash = BigUint::from_str(&groth16_bn254_public_inputs[0])?;
+    let expected_public_values_hash = BigUint::from_str(&groth16_bn254_public_inputs[1])?;
+
+    // let vk_hash = vk.hash_bn254().as_canonical_biguint();
+    // if vk_hash != expected_vk_hash {
+    //     return Err(Groth16VerificationError::InvalidVerificationKey.into());
+    // }
 
     let public_values_hash = public_values.hash_bn254();
     if public_values_hash != expected_public_values_hash {

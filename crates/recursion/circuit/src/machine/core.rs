@@ -38,7 +38,7 @@ use sp1_recursion_core::{
 
 use crate::{
     challenger::{CanObserveVariable, DuplexChallengerVariable, FieldChallengerVariable},
-    machine::recursion_public_values_digest,
+    machine::{assert_recursion_public_values_valid, recursion_public_values_digest},
     stark::{dummy_challenger, dummy_vk_and_shard_proof, ShardProofVariable, StarkVerifier},
     BabyBearFriConfig, BabyBearFriConfigVariable, CircuitConfig, VerifyingKeyVariable,
 };
@@ -634,8 +634,8 @@ where
         let mut leaf_challenger = machine.config().challenger_variable(builder);
 
         // Initialize shard variables.
-        // let mut initial_shard: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
-        // let mut current_shard: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
+        let mut initial_shard: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
+        let mut current_shard: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
 
         // Initialize execution shard variables.
         // let mut initial_execution_shard: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
@@ -659,15 +659,15 @@ where
         // let mut exit_code: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
 
         // Initialize the public values digest.
-        // let mut committed_value_digest: [Word<Felt<_>>; PV_DIGEST_NUM_WORDS] =
-        //     array::from_fn(|_| Word(array::from_fn(|_| builder.uninit())));
+        let mut committed_value_digest: [Word<Felt<_>>; PV_DIGEST_NUM_WORDS] =
+            array::from_fn(|_| Word(array::from_fn(|_| builder.uninit())));
 
         // Initialize the deferred proofs digest.
         // let mut deferred_proofs_digest: [Felt<_>; POSEIDON_NUM_WORDS] =
         //     array::from_fn(|_| builder.uninit());
 
         // Initialize the challenger variables.
-        // let leaf_challenger_public_values = leaf_challenger.public_values(builder);
+        let leaf_challenger_public_values = leaf_challenger.public_values(builder);
         // let mut reconstruct_challenger: DuplexChallengerVariable<_> =
         //     initial_reconstruct_challenger.copy(builder);
 
@@ -681,7 +681,6 @@ where
         // let mut cpu_shard_seen = false;
 
         // Verify proofs.
-        let i = 0;
 
         // for (i, shard_proof) in shard_proofs.into_iter().enumerate() {
         {
@@ -690,14 +689,14 @@ where
             // let contains_memory_finalize = shard_proof.contains_memory_finalize();
 
             // Get the public values.
-            // let public_values: &PublicValues<Word<Felt<_>>, Felt<_>> =
-            //     shard_proof.public_values.as_slice().borrow();
+            let public_values: &PublicValues<Word<Felt<_>>, Felt<_>> =
+                shard_proof.public_values.as_slice().borrow();
 
             // If this is the first proof in the batch, initialize the variables.
-            if i == 0 {
+            {
                 // Shard.
-                // initial_shard = public_values.shard;
-                // current_shard = public_values.shard;
+                initial_shard = public_values.shard;
+                current_shard = public_values.shard;
 
                 // Execution shard.
                 // initial_execution_shard = public_values.execution_shard;
@@ -1041,60 +1040,68 @@ where
         // Assert that the last exit code is zero.
         // builder.assert_felt_eq(exit_code, C::F::zero());
 
+        // Get the current public values.
+        let current_public_values: &RecursionPublicValues<Felt<C::F>> =
+        shard_proof.public_values.as_slice().borrow();
+
+        // Assert that the public values are valid.
+        // assert_recursion_public_values_valid::<C, SC>(builder, current_public_values);
+
+        SC::commit_recursion_public_values(builder, *current_public_values);
         // Write all values to the public values struct and commit to them.
         // {
-        // Compute the vk digest.
-        // let vk_digest = vk.hash(builder);
+        //     // Compute the vk digest.
+        //     // let vk_digest = vk.hash(builder);
 
-        // // Collect the public values for challengers.
-        // let initial_challenger_public_values =
-        //     initial_reconstruct_challenger.public_values(builder);
-        // let final_challenger_public_values = reconstruct_challenger.public_values(builder);
+        //     // Collect the public values for challengers.
+        //     let initial_challenger_public_values =
+        //         initial_reconstruct_challenger.public_values(builder);
+        //     let final_challenger_public_values = reconstruct_challenger.public_values(builder);
 
-        // // Collect the cumulative sum.
-        // let global_cumulative_sum_array = builder.ext2felt_v2(global_cumulative_sum);
+        //     // Collect the cumulative sum.
+        //     // let global_cumulative_sum_array = builder.ext2felt_v2(global_cumulative_sum);
 
-        // // Collect the deferred proof digests.
-        // let zero: Felt<_> = builder.eval(C::F::zero());
-        // let start_deferred_digest = [zero; POSEIDON_NUM_WORDS];
-        // let end_deferred_digest = [zero; POSEIDON_NUM_WORDS];
+        //     // Collect the deferred proof digests.
+        //     let zero: Felt<_> = builder.eval(C::F::zero());
+        //     let start_deferred_digest = [zero; POSEIDON_NUM_WORDS];
+        //     let end_deferred_digest = [zero; POSEIDON_NUM_WORDS];
 
-        // Initialize the public values we will commit to.
-        // let mut recursion_public_values_stream = [zero; RECURSIVE_PROOF_NUM_PV_ELTS];
-        // let recursion_public_values: &mut RecursionPublicValues<_> =
-        //     recursion_public_values_stream.as_mut_slice().borrow_mut();
-        // recursion_public_values.committed_value_digest = committed_value_digest;
-        // recursion_public_values.deferred_proofs_digest = deferred_proofs_digest;
-        // recursion_public_values.start_pc = start_pc;
-        // recursion_public_values.next_pc = current_pc;
-        // recursion_public_values.start_shard = initial_shard;
-        // recursion_public_values.next_shard = current_shard;
-        // recursion_public_values.start_execution_shard = initial_execution_shard;
-        // recursion_public_values.next_execution_shard = current_execution_shard;
-        // recursion_public_values.previous_init_addr_bits = initial_previous_init_addr_bits;
-        // recursion_public_values.last_init_addr_bits = current_init_addr_bits;
-        // recursion_public_values.previous_finalize_addr_bits =
-        //     initial_previous_finalize_addr_bits;
-        // recursion_public_values.last_finalize_addr_bits = current_finalize_addr_bits;
-        // recursion_public_values.sp1_vk_digest = vk_digest;
-        // recursion_public_values.leaf_challenger = leaf_challenger_public_values;
-        // recursion_public_values.start_reconstruct_challenger = initial_challenger_public_values;
-        // recursion_public_values.end_reconstruct_challenger = final_challenger_public_values;
-        // recursion_public_values.cumulative_sum = global_cumulative_sum_array;
-        // recursion_public_values.start_reconstruct_deferred_digest = start_deferred_digest;
-        // recursion_public_values.end_reconstruct_deferred_digest = end_deferred_digest;
-        // recursion_public_values.exit_code = exit_code;
-        // recursion_public_values.is_complete = is_complete;
-        // // Set the contains an execution shard flag.
-        // recursion_public_values.contains_execution_shard =
-        //     builder.eval(C::F::from_bool(cpu_shard_seen));
-        // recursion_public_values.vk_root = vk_root;
+        //     // Initialize the public values we will commit to.
+        //     let mut recursion_public_values_stream = [zero; RECURSIVE_PROOF_NUM_PV_ELTS];
+        //     let recursion_public_values: &mut RecursionPublicValues<_> =
+        //         recursion_public_values_stream.as_mut_slice().borrow_mut();
+        //     recursion_public_values.committed_value_digest = committed_value_digest;
+        //     // recursion_public_values.deferred_proofs_digest = deferred_proofs_digest;
+        //     // recursion_public_values.start_pc = start_pc;
+        //     // recursion_public_values.next_pc = current_pc;
+        //     recursion_public_values.start_shard = initial_shard;
+        //     recursion_public_values.next_shard = current_shard;
+        //     // recursion_public_values.start_execution_shard = initial_execution_shard;
+        //     // recursion_public_values.next_execution_shard = current_execution_shard;
+        //     // recursion_public_values.previous_init_addr_bits = initial_previous_init_addr_bits;
+        //     // recursion_public_values.last_init_addr_bits = current_init_addr_bits;
+        //     // recursion_public_values.previous_finalize_addr_bits =
+        //         // initial_previous_finalize_addr_bits;
+        //     // recursion_public_values.last_finalize_addr_bits = current_finalize_addr_bits;
+        //     // recursion_public_values.sp1_vk_digest = vk_digest;
+        //     recursion_public_values.leaf_challenger = leaf_challenger_public_values;
+        //     // recursion_public_values.start_reconstruct_challenger = initial_challenger_public_values;
+        //     // recursion_public_values.end_reconstruct_challenger = final_challenger_public_values;
+        //     // recursion_public_values.cumulative_sum = global_cumulative_sum_array;
+        //     // recursion_public_values.start_reconstruct_deferred_digest = start_deferred_digest;
+        //     // recursion_public_values.end_reconstruct_deferred_digest = end_deferred_digest;
+        //     // recursion_public_values.exit_code = exit_code;
+        //     // recursion_public_values.is_complete = ;
+        //     // Set the contains an execution shard flag.
+        //     // recursion_public_values.contains_execution_shard =
+        //     //     builder.eval(C::F::from_bool(cpu_shard_seen));
+        //     // recursion_public_values.vk_root = vk_root;
 
-        // // Calculate the digest and set it in the public values.
-        // recursion_public_values.digest =
-        //     recursion_public_values_digest::<C, SC>(builder, recursion_public_values);
+        //     // Calculate the digest and set it in the public values.
+        //     recursion_public_values.digest =
+        //         recursion_public_values_digest::<C, SC>(builder, recursion_public_values);
 
-        // SC::commit_recursion_public_values(builder, *recursion_public_values);
+        //     SC::commit_recursion_public_values(builder, *recursion_public_values);
         // }
     }
 }

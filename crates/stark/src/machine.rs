@@ -405,6 +405,7 @@ where
     tracing::debug_span!("verify shard proofs").in_scope(|| {
         // for (i, shard_proof) in proof.shard_proofs.iter().enumerate() {
             tracing::debug_span!("verifying shard", shard = 0).in_scope(|| {
+                // WIP hardcode
                 let shard_proof = &proof.shard_proofs[0];
                 let chips = vec![chip];
                 Verifier::verify_shard_(
