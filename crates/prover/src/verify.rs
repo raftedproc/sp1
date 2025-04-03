@@ -14,13 +14,15 @@ use sp1_recursion_gnark_ffi::{
     Groth16Bn254Proof, Groth16Bn254Prover, PlonkBn254Proof, PlonkBn254Prover,
 };
 use sp1_stark::{
-    air::{PublicValues, POSEIDON_NUM_WORDS, PV_DIGEST_NUM_WORDS}, baby_bear_poseidon2::BabyBearPoseidon2, Chip, MachineProof, MachineProver, MachineVerificationError, StarkGenericConfig, Word
+    air::{PublicValues, POSEIDON_NUM_WORDS, PV_DIGEST_NUM_WORDS},
+    baby_bear_poseidon2::BabyBearPoseidon2,
+    Chip, MachineProof, MachineProver, MachineVerificationError, StarkGenericConfig, Word,
 };
 use thiserror::Error;
 
 use crate::{
     components::SP1ProverComponents,
-    utils::{assert_recursion_public_values_valid, assert_root_public_values_valid},
+    utils::{assert_recursion_public_values_valid, assert_root_public_values_valid, babybear_bytes_to_bn254},
     CoreSC, HashableKey, OuterSC, SP1CoreProofData, SP1Prover, SP1VerifyingKey,
 };
 
@@ -522,7 +524,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         // Verify the shard proof.
         let mut challenger = self.core_prover.config().challenger();
         let machine_proof = MachineProof { shard_proofs: proof.0.to_vec() };
-        
+
         // self.core_prover.machine().verify_(&vk.vk, &machine_proof, chip, &mut challenger)?;
 
         Ok(())
@@ -663,7 +665,12 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         Ok(())
     }
 
-    pub fn verify_groth16_bn254_(&self, proof: &Groth16Bn254Proof, public_values: &SP1PublicValues, build_dir: &Path) -> Result<()> {
+    pub fn verify_groth16_bn254_(
+        &self,
+        proof: &Groth16Bn254Proof,
+        public_values: &SP1PublicValues,
+        build_dir: &Path,
+    ) -> Result<()> {
         let prover = Groth16Bn254Prover::new();
 
         let vkey_hash = BigUint::from_str(&proof.public_inputs[0])?;
@@ -736,7 +743,18 @@ pub fn verify_groth16_bn254_public_inputs_(
     //     return Err(Groth16VerificationError::InvalidVerificationKey.into());
     // }
 
-    let public_values_hash = public_values.hash_bn254();
+    let committed_values_digest_bytes: [BabyBear; 32] = public_values
+        .as_slice()
+        .iter()
+        .take(32)
+        .map(|&b| BabyBear::from_canonical_u8(b))
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+
+    let public_values_hash =
+        babybear_bytes_to_bn254(&committed_values_digest_bytes).as_canonical_biguint();
+
     if public_values_hash != expected_public_values_hash {
         return Err(Groth16VerificationError::InvalidPublicValues.into());
     }
